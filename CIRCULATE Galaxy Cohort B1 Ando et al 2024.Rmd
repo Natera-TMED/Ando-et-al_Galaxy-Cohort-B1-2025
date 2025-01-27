@@ -1,0 +1,1915 @@
+---
+title: "CIRCULATE Galaxy cohort B Ando et al 2024"
+output: html_notebook
+---
+
+library(swimplot)
+library(coxphf)
+library(grid)
+library(gtable)
+library(readr) 
+library(mosaic)
+library(dplyr)
+library(officer)
+library(flextable)
+library(survival) 
+library(survminer)
+library(gridtext)
+library(ggplot2)
+library(scales)
+library(ggthemes)
+library(tidyverse)
+library(gtsummary)
+library(flextable)
+library(parameters)
+library(car)
+library(grid)
+library(ComplexHeatmap)
+library(readxl)
+library(janitor)
+library(rms)
+library(DT)
+
+#Demographics Table
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+
+circ_data_subset <- circ_data %>%
+  select(
+    Age,
+    Gender,
+    ECOG,
+    pT,
+    pN,
+    Stage,
+    ACT,
+    BRAF.V600E,
+    RAS,
+    MSI,
+    RFS.Event,
+    OS.Event,
+    OS.months) %>%
+  mutate(
+    Age = as.numeric(Age),
+    Gender = factor(Gender, levels = c("Male", "Female")),
+    ECOG = factor(ECOG, levels = c(0, 1)),
+    pT = factor(pT, levels = c("T1-T2", "T3-T4")),
+    pN = factor(pN, levels = c("N0", "N1-N2")),
+    Stage = factor(Stage, levels = c("II", "III")),
+    ACT = factor(ACT, levels = c("TRUE", "FALSE"), labels = c("Adjuvant Chemotherapy", "Observation")),
+    BRAF.V600E = factor(BRAF.V600E, levels = c("WT", "MUT"), labels = c("BRAF wt", "BRAF V600E")),
+    RAS = factor(RAS, levels = c("WT", "MUT"), labels = c("RAS wt", "RAS mut")),
+    MSI = factor(MSI, levels = c("MSS", "MSI-High")),
+    RFS.Event = factor(RFS.Event, levels = c("TRUE", "FALSE"), labels = c("Recurrence", "No Recurrence")),
+    OS.Event = factor(OS.Event, levels = c("TRUE", "FALSE"), labels = c("Deceased", "Alive")),
+    OS.months = as.numeric(OS.months))
+table1 <- circ_data_subset %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  bold_labels()
+table1
+fit1 <- as_flex_table(
+  table1,
+  include = everything(),
+  return_calls = FALSE,
+  strip_md_bold = TRUE)
+fit1
+save_as_docx(fit1, path= "~/Downloads/table1.docx")
+```
+
+
+#Demographics Table by MRD ctDNA Status
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+
+circ_data_subset1 <- circ_data %>%
+  select(
+    Age,
+    Gender,
+    ECOG,
+    pT,
+    pN,
+    Stage,
+    ACT,
+    BRAF.V600E,
+    RAS,
+    MSI,
+    RFS.Event,
+    OS.Event,
+    OS.months) %>%
+  mutate(
+    Age = as.numeric(Age),
+    Gender = factor(Gender, levels = c("Male", "Female")),
+    ECOG = factor(ECOG, levels = c(0, 1)),
+    pT = factor(pT, levels = c("T1-T2", "T3-T4")),
+    pN = factor(pN, levels = c("N0", "N1-N2")),
+    Stage = factor(Stage, levels = c("II", "III")),
+    ACT = factor(ACT, levels = c("TRUE", "FALSE"), labels = c("Adjuvant Chemotherapy", "Observation")),
+    BRAF.V600E = factor(BRAF.V600E, levels = c("WT", "MUT"), labels = c("BRAF wt", "BRAF V600E")),
+    RAS = factor(RAS, levels = c("WT", "MUT"), labels = c("RAS wt", "RAS mut")),
+    MSI = factor(MSI, levels = c("MSS", "MSI-High")),
+    RFS.Event = factor(RFS.Event, levels = c("TRUE", "FALSE"), labels = c("Recurrence", "No Recurrence")),
+    OS.Event = factor(OS.Event, levels = c("TRUE", "FALSE"), labels = c("Deceased", "Alive")),
+    OS.months = as.numeric(OS.months))
+
+circ_data1 <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+
+circ_data_subset2 <- circ_data %>%
+  select(
+    Age,
+    Gender,
+    ECOG,
+    pT,
+    pN,
+    Stage,
+    ACT,
+    BRAF.V600E,
+    RAS,
+    MSI,
+    RFS.Event,
+    OS.Event,
+    OS.months,
+    ctDNA.MRD) %>%
+  mutate(
+    Age = as.numeric(Age),
+    Gender = factor(Gender, levels = c("Male", "Female")),
+    ECOG = factor(ECOG, levels = c(0, 1)),
+    pT = factor(pT, levels = c("T1-T2", "T3-T4")),
+    pN = factor(pN, levels = c("N0", "N1-N2")),
+    Stage = factor(Stage, levels = c("II", "III")),
+    ACT = factor(ACT, levels = c("TRUE", "FALSE"), labels = c("Adjuvant Chemotherapy", "Observation")),
+    BRAF.V600E = factor(BRAF.V600E, levels = c("WT", "MUT"), labels = c("BRAF wt", "BRAF V600E")),
+    RAS = factor(RAS, levels = c("WT", "MUT"), labels = c("RAS wt", "RAS mut")),
+    MSI = factor(MSI, levels = c("MSS", "MSI-High")),
+    RFS.Event = factor(RFS.Event, levels = c("TRUE", "FALSE"), labels = c("Recurrence", "No Recurrence")),
+    OS.Event = factor(OS.Event, levels = c("TRUE", "FALSE"), labels = c("Deceased", "Alive")),
+    OS.months = as.numeric(OS.months),
+    ctDNA.MRD = factor(ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE")))
+Overall <- circ_data_subset1 %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  bold_labels()
+Overall
+
+ByctDNA_MRD <- circ_data_subset2 %>%
+  tbl_summary(
+    by = ctDNA.MRD, # add this line to subgroup by ctDNA.MRD
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  add_p() %>%
+  bold_labels()
+ByctDNA_MRD
+
+merged_table <- tbl_merge(tbls=list(Overall, ByctDNA_MRD))
+merged_table
+
+fit1 <- as_flex_table(
+  merged_table,
+  include = everything(),
+  return_calls = FALSE,
+  strip_md_bold = TRUE)
+fit1
+save_as_docx(fit1, path= "~/Downloads/merged_table.docx")
+```
+
+#ctDNA Detection Rates by Window and Stages
+```{r}
+#ctDNA at Baseline
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data$ctDNA.Baseline <- factor(circ_data$ctDNA.Baseline, levels=c("NEGATIVE","POSITIVE"))
+circ_data <- subset(circ_data, ctDNA.Baseline %in% c("NEGATIVE", "POSITIVE"))
+circ_data$Stage <- factor(circ_data$Stage, levels=c("II", "III"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.Baseline == "POSITIVE", by=list(circ_data$Stage), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.Baseline, by=list(circ_data$Stage), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.Baseline == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+
+#ctDNA at MRD Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$Stage <- factor(circ_data$Stage, levels=c("II", "III"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.MRD == "POSITIVE", by=list(circ_data$Stage), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.MRD, by=list(circ_data$Stage), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.MRD == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+
+#ctDNA at Surveillance Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data <- subset(circ_data, ctDNA.Surveillance %in% c("NEGATIVE", "POSITIVE"))
+circ_data$Stage <- factor(circ_data$Stage, levels=c("II", "III"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.Surveillance == "POSITIVE", by=list(circ_data$Stage), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.Surveillance, by=list(circ_data$Stage), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.Surveillance == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+```
+
+
+
+#ctDNA MRD Detection rate Stage II vs III
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"))
+circ_data$Stage_Grouped <- factor(ifelse(circ_data$Stage %in% c("II", "II"), "II", "III"))
+contingency_table <- table(circ_data$Stage_Grouped, circ_data$ctDNA.MRD)
+chi_square_test <- chisq.test(contingency_table)
+print(contingency_table)
+print(chi_square_test)
+```
+
+#ctDNA Surveillance Detection rate Stage II vs III
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels = c("NEGATIVE", "POSITIVE"))
+circ_data$Stage_Grouped <- factor(ifelse(circ_data$Stage %in% c("II", "II"), "II", "III"))
+contingency_table <- table(circ_data$Stage_Grouped, circ_data$ctDNA.Surveillance)
+chi_square_test <- chisq.test(contingency_table)
+print(contingency_table)
+print(chi_square_test)
+```
+
+#DFS by ctDNA at the MRD Window - All stages Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)~ctDNA.MRD, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.MRD) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.MRD, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA MRD window | All stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(12, 18, 24))
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.MRD, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 12, 18, and 24 months
+dfs_times <- c(12, 18, 24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+
+
+
+#Multivariate cox regression at MRD Window for DFS - All stages Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ctDNA.MRD + Gender + Age.Group + ECOG + pT + pN + RAS, data=circ_data) 
+ggforest(cox_fit, data = circ_data, main = "Multivariate Regression Model for DFS - All Stages", refLabel = "Reference Group")
+test.ph <- cox.zph(cox_fit)
+```
+
+
+#DFS by ctDNA at the MRD Window - Stage II Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[!(circ_data$Stage %in% c("III")),]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)~ctDNA.MRD, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.MRD) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.MRD, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA MRD window | Stage II", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.MRD, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 12 and 24 months
+dfs_times <- c(12, 24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+#DFS by ctDNA at the MRD Window - Stage III Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$Eligible=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[!(circ_data$Stage %in% c("II")),]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)~ctDNA.MRD, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.MRD) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.MRD, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA MRD window | Stage III", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(24, 30))
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.MRD, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24 and 30 months
+dfs_times <- c(24, 30)
+circ_data <- na.omit(circ_data[, c("ctDNA.MRD", "DFS.MRD.months", "DFS.Event")])
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+
+
+
+
+
+#DFS by ACT treatment in MRD negative - Stage II/III
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Negative ACT vs Observation | Stage II/III", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24
+dfs_times <- c(24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ACT == "TRUE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ACT == "FALSE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ACT == "TRUE")
+  pos_total <- sum(circ_data$ACT == "FALSE")
+  
+  neg_surv <- neg_total - sum(circ_data$ACT == "TRUE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ACT == "FALSE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+#Adjusted HR "ACT vs no ACT" - Non ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ACT <- factor(circ_data$ACT, levels=c("FALSE","TRUE"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", "≥70"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Stage <- factor(circ_data$Stage, levels = c("II", "III"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels=c("0","1"))
+surv_object <- Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + Stage + ECOG, data=circ_data)
+summary(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD positive - Stage II/III
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Positive ACT vs Observation | Stage II/III", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(6, 24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Adjusted HR "ACT vs no ACT" - Non ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ACT <- factor(circ_data$ACT, levels=c("FALSE","TRUE"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", "≥70"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Stage <- factor(circ_data$Stage, levels = c("II", "III"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels=c("0","1"))
+surv_object <- Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + Stage + ECOG, data=circ_data)
+summary(cox_fit)
+```
+
+
+#DFS by ctDNA at 3 months - All stages Landmark 3 months timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.3months!="",]
+circ_data <- circ_data[circ_data$DFS.3mo.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.3mo.months, event = circ_data$DFS.Event)~ctDNA.3months, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.3months) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.3mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.3months, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA 3 months | All stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.3months <- factor(circ_data$ctDNA.3months, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.3months, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 12 and 24 months
+dfs_times <- c(12, 24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.3months == "NEGATIVE" & circ_data$DFS.3mo.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.3months == "POSITIVE" & circ_data$DFS.3mo.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.3months == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.3months == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.3months == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.3mo.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.3months == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.3mo.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+
+
+
+#DFS by ctDNA at 6 months - All stages Landmark 6 months timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.6months!="",]
+circ_data <- circ_data[circ_data$DFS.6mo.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)~ctDNA.6months, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.6months) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.6months, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA 6 months | All stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(6, 24))
+circ_data$ctDNA.6months <- factor(circ_data$ctDNA.6months, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.6months, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 6 and 24 months
+dfs_times <- c(6, 24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.6months == "NEGATIVE" & circ_data$DFS.6mo.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.6months == "POSITIVE" & circ_data$DFS.6mo.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.6months == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.6months == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.6months == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.6mo.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.6months == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.6mo.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+
+
+
+#DFS by ctDNA Clearance ACT-treated at 3 months - all stages
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",] 
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "POSITIVE" & ctDNA.3months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.3months == "POSITIVE" ~ 2
+  ))
+
+circ_data <- circ_data[circ_data$DFS.3mo.months>=0,]
+survfit(Surv(time = circ_data$DFS.3mo.months, event = circ_data$DFS.Event)~ctDNA.Dynamics, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Dynamics) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.3mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA Clearance from MRD to 3 months ACT-treated | All Stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Clearance", "No Clearance"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2"), labels = c("Clearance", "No Clearance"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 12 and 24 months
+dfs_times <- c(12)
+circ_data <- na.omit(circ_data[, c("ctDNA.Dynamics", "DFS.3mo.months", "DFS.Event")])
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.Dynamics == "Clearance" & circ_data$DFS.3mo.months >= time & circ_data$DFS.Event == FALSE)
+  pos_count <- sum(circ_data$ctDNA.Dynamics == "No Clearance" & circ_data$DFS.3mo.months >= time & circ_data$DFS.Event == FALSE)
+  neg_total <- sum(circ_data$ctDNA.Dynamics == "Clearance")
+  pos_total <- sum(circ_data$ctDNA.Dynamics == "No Clearance")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.Dynamics == "Clearance" & circ_data$DFS.Event == TRUE & circ_data$DFS.3mo.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.Dynamics == "No Clearance" & circ_data$DFS.Event == TRUE & circ_data$DFS.3mo.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+
+#DFS by ctDNA Clearance ACT-treated at 6 months - all stages
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "POSITIVE" ~ 2
+  ))
+
+circ_data <- circ_data[circ_data$DFS.6mo.months>=0,]
+survfit(Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)~ctDNA.Dynamics, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Dynamics) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA Clearance from MRD to 6 months ACT-treated | All Stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Clearance", "No Clearance"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2"), labels = c("Clearance", "No Clearance"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+```
+
+
+#Percentages of MRD negative with molecular recurrence (returned positive) post-MRD
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD != "" & circ_data$Lead.Time >= 0, ]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$PostMRDPos.Event=="TRUE",]
+circ_datadf <- as.data.frame(circ_data)
+
+# Convert days to months
+circ_data$PostMRDPos.months <- circ_data$PostMRDPos/30.437
+
+# Define the intervals: 0-6, 6-9, 9-12, 12-15, 15-18, 18-21, 21-24, >24 months
+breaks <- c(0, 6, 9, 12, 15, 18, 21, 24, 48)
+labels <- c("0-6m", "6-9m", "9-12m", "12-15m", "15-18m", "18-21m", "21-24m", ">24m")
+
+# Categorize p_drelReturned_months into intervals
+circ_data$p_drelReturned_intervals <- cut(circ_data$PostMRDPos.months, breaks = breaks, labels = labels, right = FALSE)
+
+# Examine the distribution of the intervals
+table(circ_data$p_drelReturned_intervals)
+
+# Get the counts for each interval
+interval_counts <- table(circ_data$p_drelReturned_intervals)
+
+# Calculate the percentages
+interval_percentages <- 100 * interval_counts / sum(interval_counts)
+
+# Combine the counts and percentages for a clearer overview
+interval_summary <- data.frame(Counts = interval_counts, Percentages = interval_percentages)
+
+# Calculate the total number of observations
+total_observations <- sum(interval_counts)
+
+# Add the total number of observations to the summary
+interval_summary$TotalObservations <- c(rep(NA, length(interval_counts)-1), total_observations)
+
+# Print the summary with total observations
+print(interval_summary)
+
+# Calculate cumulative percentages
+cumulative_percentages <- cumsum(interval_percentages)
+
+# Combine the counts, percentages, and cumulative percentages for a clearer overview
+interval_summary <- data.frame(Counts = interval_counts, Percentages = interval_percentages, CumulativePercentages = cumulative_percentages, TotalObservations = c(rep(NA, length(interval_counts)-1), total_observations))
+
+bp <- barplot(interval_percentages, 
+              main="Molecular Recurrence post-MRD in MRD negative patients", 
+              xlab="Months Interval from Surgery", 
+              ylab="Patients % converted positive", 
+              col="lightblue",
+              ylim=c(0, 100))
+
+# Add the cumulative percentages to the plot
+points(bp, cumulative_percentages, type="o", pch=22, col="red", cex=1.5)
+print(interval_summary)
+```
+
+
+
+
+#DFS by ctDNA MRD positive vs ctDNA negative with molecular recurrence at Surveillance - 3 groups
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="NEGATIVE" ~ 1,
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="POSITIVE" ~ 2,
+    ctDNA.MRD == "POSITIVE" ~ 3
+  ))
+
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+survfit(Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)~ctDNA.Dynamics, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Dynamics) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","green","red"), title="DFS - ctDNA MRD Pos vs Neg with Molecular Recurrence at Surveillance Window", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("All-time negative","Molecular Recurrence", "ctDNA MRD Positive"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2","3"), labels = c("All-time negative","Molecular Recurrence", "ctDNA MRD Positive"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+
+#Fisher test for DFS percentages at 12 and 24 months - All time negative vs Molecular Recurrence
+dfs_times <- c(12, 24)
+circ_data <- na.omit(circ_data[, c("ctDNA.Dynamics", "DFS.MRD.months", "DFS.Event")])
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.Dynamics == "All-time negative" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.Dynamics == "Molecular Recurrence" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.Dynamics == "All-time negative")
+  pos_total <- sum(circ_data$ctDNA.Dynamics == "Molecular Recurrence")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.Dynamics == "All-time negative" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.Dynamics == "Molecular Recurrence" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+#Repeat analysis to run Fisher test for All time negative vs ctDNA Positive
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="NEGATIVE" ~ 1,
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="POSITIVE" ~ 2,
+    ctDNA.MRD == "POSITIVE" ~ 3
+  ))
+
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2","3"), labels = c("All-time negative","Molecular Recurrence", "ctDNA MRD Positive"))
+
+#Fisher test for DFS percentages at 12 and 24 months - All time negative vs ctDNA Positive
+dfs_times <- c(12, 24)
+circ_data <- na.omit(circ_data[, c("ctDNA.Dynamics", "DFS.MRD.months", "DFS.Event")])
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.Dynamics == "All-time negative" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.Dynamics == "ctDNA MRD Positive" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.Dynamics == "All-time negative")
+  pos_total <- sum(circ_data$ctDNA.Dynamics == "ctDNA MRD Positive")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.Dynamics == "All-time negative" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.Dynamics == "ctDNA MRD Positive" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+#Repeat analysis to run Fisher test for Molecular Recurrence vs ctDNA Positive
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="NEGATIVE" ~ 1,
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="POSITIVE" ~ 2,
+    ctDNA.MRD == "POSITIVE" ~ 3
+  ))
+
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2","3"), labels = c("All-time negative","Molecular Recurrence", "ctDNA MRD Positive"))
+
+#Fisher test for DFS percentages at 12 and 24 months - Molecular Recurrence vs ctDNA Positive
+dfs_times <- c(12, 24)
+circ_data <- na.omit(circ_data[, c("ctDNA.Dynamics", "DFS.MRD.months", "DFS.Event")])
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.Dynamics == "Molecular Recurrence" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.Dynamics == "ctDNA MRD Positive" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.Dynamics == "Molecular Recurrence")
+  pos_total <- sum(circ_data$ctDNA.Dynamics == "ctDNA MRD Positive")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.Dynamics == "Molecular Recurrence" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.Dynamics == "ctDNA MRD Positive" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+#Repeat to compare HRs for Molecular Recurrence vs ctDNA MRD positive
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="NEGATIVE" ~ 1,
+    ctDNA.MRD == "NEGATIVE" & ctDNA.Surveillance=="POSITIVE" ~ 2,
+    ctDNA.MRD == "POSITIVE" ~ 3
+  ))
+
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("2","3"), labels = c("Molecular Recurrence", "ctDNA MRD Positive"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+```
+
+#DFS by ctDNA at the Surveillance Window - All stages Landmark 10 weeks
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Surveillance!="",]
+circ_data$DFS.months=circ_data$DFS.months-2.5
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ctDNA.Surveillance, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Surveillance) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Surveillance, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA Surveillance window | All stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.Surveillance, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 12 and 24 months
+dfs_times <- c(12, 24)
+circ_data <- na.omit(circ_data[, c("ctDNA.Surveillance", "DFS.months", "DFS.Event")])
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.Surveillance == "NEGATIVE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.Surveillance == "POSITIVE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.Surveillance == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.Surveillance == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.Surveillance == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.Surveillance == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+```
+
+
+
+
+#Multivariate cox regression at Surveillance Window for DFS - All stages Landmark 10 weeks
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Surveillance!="",]
+circ_data$DFS.months=circ_data$DFS.months-2.5
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Left-sided colon", "Right-sided colon"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ctDNA.Surveillance + Gender + Age.Group + ECOG + pT + pN + RAS, data=circ_data) 
+ggforest(cox_fit, data = circ_data, main = "Multivariate Regression Model for DFS - All Stages", refLabel = "Reference Group")
+test.ph <- cox.zph(cox_fit)
+```
+
+
+#DFS by ctDNA Dynamics from MRD to 6 months - all stages
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.6mo.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "NEGATIVE" & ctDNA.6months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "NEGATIVE" ~ 2,
+    ctDNA.MRD == "NEGATIVE" & ctDNA.6months == "POSITIVE" ~ 3,
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "POSITIVE" ~ 4
+  ))
+
+survfit(Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)~ctDNA.Dynamics, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Dynamics) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","green","purple", "red"), title="DFS - ctDNA Dynamics from MRD to 6 months | All Stages", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Persistently Negative", "Converted Negative","Converted Positive", "Persistently Positive"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2","3", "4"), labels = c("Persistently Negative", "Converted Negative","Converted Positive", "Persistently Positive"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+```
+
+
+#Table with recurrence sites by ctDNA at the MRD Window
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+
+circ_data_subset1 <- circ_data %>%
+  select(
+    Rel.Site) %>%
+  mutate(
+    Rel.Site = factor(Rel.Site, levels = c("Local", "Lymph Node", "Liver", "Lung", "Peritoneum", "Brain")))
+
+circ_data_subset2 <- circ_data %>%
+  select(
+    Rel.Site,
+    ctDNA.MRD) %>%
+  mutate(
+    Rel.Site = factor(Rel.Site, levels = c("Local", "Lymph Node", "Liver", "Lung", "Peritoneum", "Brain")),
+    ctDNA.MRD = factor(ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE")))
+Overall <- circ_data_subset1 %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  bold_labels()
+Overall
+
+ByctDNA_MRD <- circ_data_subset2 %>%
+  tbl_summary(
+    by = ctDNA.MRD, # add this line to subgroup by ctDNA.MRD
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  add_p() %>%
+  bold_labels()
+ByctDNA_MRD
+
+merged_table <- tbl_merge(tbls=list(Overall, ByctDNA_MRD))
+merged_table
+
+fit1 <- as_flex_table(
+  merged_table,
+  include = everything(),
+  return_calls = FALSE,
+  strip_md_bold = TRUE)
+fit1
+save_as_docx(fit1, path= "~/Downloads/merged_table.docx")
+```
+
+
+#MTM/mL levels at the MRD Window by Radiological Recurrence
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_data <- as.data.frame(circ_data)
+
+# Transform p_MRD_MTM with log10
+circ_data$p_MRD_MTM <- as.numeric(as.character(circ_data$p_MRD_MTM))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels = c("FALSE", "TRUE"), labels = c("No Recurrence", "Recurrence"))
+summary_stats <- circ_data %>%
+  group_by(RFS.Event) %>%
+  summarise(
+    median_p_MRD_MTM = median(p_MRD_MTM, na.rm = TRUE),
+    range_p_MRD_MTM = paste0(min(p_MRD_MTM, na.rm = TRUE), " - ", max(p_MRD_MTM, na.rm = TRUE))
+  )
+print(summary_stats)
+
+m3_1v2 <- wilcox.test(p_MRD_MTM ~ RFS.Event,
+                      data = circ_data[circ_data$RFS.Event %in% c("No Recurrence", "Recurrence"), ],
+                      na.rm = TRUE)
+print(m3_1v2)
+boxplot(p_MRD_MTM~RFS.Event, data=circ_data, main="ctDNA MRD Window MTM - Recurrence", xlab="Recurrence", ylab="MTM/mL", col="white",border="black", ylim = c(0, 50))
+```
+
+#MTM/mL levels at the MRD Window by Radiological Recurrence Sites
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_data <- as.data.frame(circ_data)
+
+# Transform p_MRD_MTM with log10
+circ_data$p_MRD_MTM <- as.numeric(as.character(circ_data$p_MRD_MTM))
+circ_data$Rel.Site <- factor(circ_data$Rel.Site, levels = c("Liver", "Lymph Node", "Local", "Peritoneum", "Lung", "Brain"))
+summary_stats <- circ_data %>%
+  group_by(Rel.Site) %>%
+  summarise(
+    median_p_MRD_MTM = median(p_MRD_MTM, na.rm = TRUE),
+    range_p_MRD_MTM = paste0(min(p_MRD_MTM, na.rm = TRUE), " - ", max(p_MRD_MTM, na.rm = TRUE))
+  )
+print(summary_stats)
+kruskal_test <- kruskal.test(p_MRD_MTM ~ Rel.Site, data = circ_data)
+print(kruskal_test)
+boxplot(p_MRD_MTM~Rel.Site, data=circ_data, main="ctDNA MRD Window MTM - Recurrence Site", xlab="Recurrence Site", ylab="MTM/mL", col="white",border="black", ylim = c(0, 40))
+```
+
+#Barplot with Recurrence Sites (Liver vs Others) by ctDNA at the MRD Window
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$Rel.Site <- factor(circ_data$Rel.Site, levels = c("Liver", "Lymph Node", "Local", "Peritoneum", "Lung", "Brain"))
+contingency_table <- table(circ_data$Rel.Site, circ_data$ctDNA.MRD)
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+fisher_exact_test <- fisher.test(contingency_table)
+print(fisher_exact_test)
+print(contingency_table)
+table_df <- as.data.frame(contingency_table)
+table_df$Total <- ave(table_df$Freq, table_df$Var1, FUN = sum)
+table_df$Percentage <- table_df$Freq / table_df$Total
+table_df$MiddlePercentage <- table_df$Percentage / 2
+ggplot(table_df, aes(x = Var1, y = Percentage, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = MiddlePercentage, label = Freq), position = "stack", color = "black", vjust = 1.5, size = 7) +
+  theme_minimal() +
+  labs(title = "Patients with Radiological Recurrence", 
+       x = "Recurrence Site", 
+       y = "Patients (%)", 
+       fill = "ctDNA at MRD",
+       caption = paste("Chi-squared test p-value: ", format.pval(chi_square_test$p.value))) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) + # define custom colors
+  theme(axis.text.x = element_text(angle = 0, hjust = 1.5, size = 14), # increase x-axis text size
+        axis.text.y = element_text(size = 14, color = "black"), # increase y-axis text size
+        axis.title.x = element_text(size = 14, color = "black"), # increase x-axis label size
+        axis.title.y = element_text(size = 14, color = "black"), # increase y-axis label size
+        legend.text = element_text(size = 12, color = "black"))  # increase Recurrence label size
+```
+
+#Detection ctDNA rates based on sites of relapse
+```{r}
+# Remove existing objects and set the working directory
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+
+# Create a table of counts for the "Rel.Site" variable
+relsite_counts <- table(circ_data$Rel.Site)
+relsite_df <- as.data.frame(relsite_counts)
+names(relsite_df) <- c("Rel.Site", "Count")
+circ_data_pos_mrd <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_data_pos_anytime <- circ_data[circ_data$ctDNA.anytime=="POSITIVE",]
+pos_counts_mrd <- table(circ_data_pos_mrd$Rel.Site)
+pos_counts_anytime <- table(circ_data_pos_anytime$Rel.Site)
+relsite_df$MRDPos_Count <- ifelse(is.na(match(relsite_df$Rel.Site, names(pos_counts_mrd))), 0, pos_counts_mrd[match(relsite_df$Rel.Site, names(pos_counts_mrd))])
+relsite_df$MRDPos_Count[is.na(relsite_df$MRDPos_Count)] <- 0
+relsite_df$AnytimePos_Count <- ifelse(is.na(match(relsite_df$Rel.Site, names(pos_counts_anytime))), 0, pos_counts_anytime[match(relsite_df$Rel.Site, names(pos_counts_anytime))])
+relsite_df$AnytimePos_Count[is.na(relsite_df$AnytimePos_Count)] <- 0
+relsite_df$Percent <- (relsite_df$Count / sum(relsite_df$Count)) * 100
+relsite_df$MRDPos_Percent <- (relsite_df$MRDPos_Count / relsite_df$Count) * 100
+relsite_df$AnytimePos_Percent <- (relsite_df$AnytimePos_Count / relsite_df$Count) * 100
+total_observations <- sum(relsite_df$Count)
+total_pos_mrd <- sum(relsite_df$MRDPos_Count)
+total_pos_anytime <- sum(relsite_df$AnytimePos_Count)
+total_row <- data.frame(Rel.Site = "Total", Count = total_observations, MRDPos_Count = total_pos_mrd, AnytimePos_Count = total_pos_anytime, Percent = 100, MRDPos_Percent = (total_pos_mrd / total_observations) * 100, AnytimePos_Percent = (total_pos_anytime / total_observations) * 100)
+relsite_df <- rbind(relsite_df, total_row)
+print(relsite_df)
+
+ft <- flextable(relsite_df)
+doc <- read_docx() %>%
+  body_add_flextable(value = ft)
+print(doc, target = "relsite_df.docx")
+```
+
+
+#MRD Window - Sensitivity and Specificity calculations - All Cohorts
+```{r}
+#All Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - All pts: ", sensitivity*100))
+print(paste("Specificity - All pts: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - All pts: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - All pts: ", npv * 100))
+
+#Stage II Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$Stage=="II",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage II: ", sensitivity*100))
+print(paste("Specificity - Stage II: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage II: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage II: ", npv * 100))
+
+#Stage III Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$Stage=="III",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage III: ", sensitivity*100))
+print(paste("Specificity - Stage III: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage III: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage III: ", npv * 100))
+```
+
+
+#MRD Window - Sensitivity and Specificity calculations - no ACT treated
+```{r}
+#All Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==FALSE,]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - All pts: ", sensitivity*100))
+print(paste("Specificity - All pts: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - All pts: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - All pts: ", npv * 100))
+
+#Stage II Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==FALSE,]
+circ_data <- circ_data[circ_data$Stage=="II",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage II: ", sensitivity*100))
+print(paste("Specificity - Stage II: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage II: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage II: ", npv * 100))
+
+#Stage III Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==FALSE,]
+circ_data <- circ_data[circ_data$Stage=="III",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage III: ", sensitivity*100))
+print(paste("Specificity - Stage III: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage III: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage III: ", npv * 100))
+```
+
+
+#MRD Window - Sensitivity and Specificity calculations - ACT treated
+```{r}
+#All Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - All pts: ", sensitivity*100))
+print(paste("Specificity - All pts: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - All pts: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - All pts: ", npv * 100))
+
+#Stage II Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_data <- circ_data[circ_data$Stage=="II",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage II: ", sensitivity*100))
+print(paste("Specificity - Stage II: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage II: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage II: ", npv * 100))
+
+#Stage III Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_data <- circ_data[circ_data$Stage=="III",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.MRD, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage III: ", sensitivity*100))
+print(paste("Specificity - Stage III: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage III: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage III: ", npv * 100))
+```
+
+
+#Surveillance Window - Sensitivity and Specificity calculations - All Cohorts
+```{r}
+#All Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - All pts: ", sensitivity*100))
+print(paste("Specificity - All pts: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - All pts: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - All pts: ", npv * 100))
+
+#Stage II Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$Stage=="II",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage II: ", sensitivity*100))
+print(paste("Specificity - Stage II: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage II: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage II: ", npv * 100))
+
+#Stage III Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$Stage=="III",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage III: ", sensitivity*100))
+print(paste("Specificity - Stage III: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage III: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage III: ", npv * 100))
+```
+
+
+#Surveillance Window - Sensitivity and Specificity calculations - non ACT treated
+```{r}
+#All Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==FALSE,]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - All pts: ", sensitivity*100))
+print(paste("Specificity - All pts: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - All pts: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - All pts: ", npv * 100))
+
+#Stage II Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==FALSE,]
+circ_data <- circ_data[circ_data$Stage=="II",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage II: ", sensitivity*100))
+print(paste("Specificity - Stage II: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage II: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage II: ", npv * 100))
+
+#Stage III Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==FALSE,]
+circ_data <- circ_data[circ_data$Stage=="III",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage III: ", sensitivity*100))
+print(paste("Specificity - Stage III: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage III: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage III: ", npv * 100))
+```
+
+
+#Surveillance Window - Sensitivity and Specificity calculations - ACT treated
+```{r}
+#All Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - All pts: ", sensitivity*100))
+print(paste("Specificity - All pts: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - All pts: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - All pts: ", npv * 100))
+
+#Stage II Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_data <- circ_data[circ_data$Stage=="II",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage II: ", sensitivity*100))
+print(paste("Specificity - Stage II: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage II: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage II: ", npv * 100))
+
+#Stage III Patients
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Data_20240603 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$CohortB=="TRUE",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_data <- circ_data[circ_data$Stage=="III",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data$RFS.Event <- factor(circ_data$RFS.Event, levels=c("FALSE","TRUE"))
+circ_data$RFS.Event <- factor(ifelse(circ_data$RFS.Event == "FALSE", "NEGATIVE", "POSITIVE"))
+conf_matrix <- table(circ_data$ctDNA.Surveillance, circ_data$RFS.Event)
+
+# Calculate sensitivity and specificity manually
+true_positives <- conf_matrix["POSITIVE", "POSITIVE"]
+false_negatives <- conf_matrix["NEGATIVE", "POSITIVE"]
+true_negatives <- conf_matrix["NEGATIVE", "NEGATIVE"]
+false_positives <- conf_matrix["POSITIVE", "NEGATIVE"]
+sensitivity <- true_positives / (true_positives + false_negatives)
+specificity <- true_negatives / (true_negatives + false_positives)
+ppv <- true_positives / (true_positives + false_positives)
+npv <- true_negatives / (true_negatives + false_negatives)
+print(paste("Sensitivity - Stage III: ", sensitivity*100))
+print(paste("Specificity - Stage III: ", specificity*100))
+print(paste("Positive Predictive Value (PPV) - Stage III: ", ppv * 100))
+print(paste("Negative Predictive Value (NPV) - Stage III: ", npv * 100))
+```
+
